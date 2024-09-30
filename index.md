@@ -292,10 +292,14 @@ Input warp distribution of 33 warps within tract 9813. Red squares represent the
 ```{figure} /_static/cell-variance-track-9813.png
 :scale: 100 %
 
-Cell variance distribution
+The distribution of variance across cells. Follows the distribution of input warps closely. Variance in this case is in arbritrary flux^2 units.
 ```
 
-[Plot: function of variance as a function of inputs, tract level]
+```{figure} /_static/variance-vs-inputs.png
+:scale: 100 %
+
+Variance of a cell as a function of number of input warps. As expected, more inputs significantly improve the variance of cells. Note that each column is jittered to avoid overplotting. This reveals that the columns with 1-3 (and weakly 4) inputs have a bimodal distribution in the cell variance.
+```
 
 ### Cell Depth
 
@@ -306,28 +310,54 @@ Cell variance distribution
 ```{figure} /_static/cell-depth-track-9813.png
 :scale: 100 %
 
-Cell depth distribution
+The distribution of PSF maglim depth across cells. Follows the distribution of input warps closely.
 ```
 
-[Plot: function of depth as a function of inputs]
+```{figure} /_static/depth-vs-inputs.png
+:scale: 100 %
+
+Depth of a cell is calculated using PSF maglim (5-sigma). Depth increases as a function of number of inputs images. Note that each column is jittered to avoid overplotting. 
+```
 
 ### Mask Fractions
 
-[Plot: HSC coadd image + 2D cell mask fraction limits]
+
+```{figure} /_static/patch_61_m_frac.png
+:scale: 50 %
+
+**Upper left**: A stitched coadd image. **Upper right**: Inputs warps per cell **Lower left**: Coadded mask fraction per cell. **Lower Middle**: Input warp fraction of each cell, maximum threshold for warps is 10%. **Lower Right**: Input warp fraction of each cell, maximum threshold for warps is 5%. 
+```
 
 ```{figure} /_static/cell-input-fraction-track-9813.png
 :scale: 100 %
 
-Remaining input warp fraction distribution
+The distribution of remaining input warp fraction of cells across tract 9813, at a maximum mask fraction threshold for warps at 5%; warps with a mask fraction above the threshold are discarded.
 ```
 
 ```{figure} /_static/cell-mask-fraction-track-9813.png
 :scale: 100 %
 
-Cell mask fraction distribution
+The distribution of coadded mask fraction of cells across tract 9813. The maximum mask fraction threshold for warps is set to 5%; warps with a mask fraction above the threshold are discarded and not included in the coadded mask fraction.
 ```
 
-- [Plot: HSC image + 2-3 input fractions]
-- [Plot: mask fraction function for single tract]
-- [Plot? : giant mask fraction function plot of three tracks + separate masks]
-- [Plot: image with stellar bleed trails and mask fraction distribution]
+#### Maximum Mask Fraction Threshold Function
+
+The data for this section was run on `w_2024_34` for tracts 9615 and 9697, and `d_2024_08_24` for tract 9813.
+
+```{figure} /_static/tract-9813-m_frac-divot.png
+:scale: 100 %
+
+The fraction of remaining input warps as a function of the maximum mask fraction threshold. Each dot is the average fraction for 7657 cells within the tract. Warps is typically only discarded once the threshold is ~15% or lower, and only noticeable closer to 10%. As expected, the number of remaining input warps per cell decreases the the threshold is lowered; this will only include input warps with very few masked pixels. Note the divot feature around 0.02%.
+```
+
+```{figure} /_static/three-tract-mfrac_divot_w34.png
+:scale: 50 %
+
+Maximum mask fraction threshold functions for three tracts: 9813, 9615, and 9697. For each tract, the threshold function was generated when all three interpolated masks were included, as isolating each mask to be interpolated individually.
+```
+
+```{figure} /_static/tract_9813_patch_m_frac.png
+:scale: 50 %
+
+Maximum mask fraction threshold functions each of the 33 patches within tract 9813. The vertical red line is placed at 0.016, which is the same reference to where the divot occurs within tract level mask fraction threshold functions. The percentage of cells indicates how many of the 484 (22 x 22) cells have input warps, indicating the statisical strength of each patch. The divot feature is most prominant in patches with most of the cell containing input warps.
+```
