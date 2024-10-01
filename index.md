@@ -186,7 +186,37 @@ This is essentially a many-to-many problem (many pixels per cell, and many cells
 
 With the `envolope` method in `sphgeom`, we can acquire the range (or multiple ranges) of pixels that overlap the cell region. This range only provides the start and end of the pixel list, but this is enough to expand and get a full list of overlapping pixels.
 
-[code block: the `get_cell_pixels` function]
+```{code-block} python
+def get_cell_pixels(cell, wcs):
+    cell_bbox = cell.inner.bbox
+    begin_coord = wcs.pixelToSky(cell_bbox.beginX, cell_bbox.beginY)
+    end_coord = wcs.pixelToSky(cell_bbox.endX, cell_bbox.endY)
+    
+    if begin_coord.getRa() < end_coord.getRa():
+        ra1 = begin_coord.getRa().asDegrees()
+        ra2 = end_coord.getRa().asDegrees()
+    else:
+        ra1 = end_coord.getRa().asDegrees()
+        ra2 = begin_coord.getRa().asDegrees()
+    
+    if begin_coord.getDec() < end_coord.getDec():
+        dec1 = begin_coord.getDec().asDegrees()
+        dec2 = end_coord.getDec().asDegrees()
+    else:
+        dec1 = end_coord.getDec().asDegrees()
+        dec2 = begin_coord.getDec().asDegrees()
+    
+    coords = [ra1, dec1, ra2, dec2] # low ra, low dec, high ra, high dec
+ 
+    box = Box.fromDegrees(*coords)
+    rs = pixelization.envelope(box) # range set
+    
+    indices = []
+    for (begin, end) in rs:
+        indices.extend(range(begin, end))
+    
+    return indices
+```
 
 Of course, this function is only for a single cell region. In most cases, this will be called while iterating over a large group of cells. The pixel indices for each cell should be collected such that each cell can be matched to the correct list of pixels (for instance, in an inhomogeneous 2D list, since each cell may overlap a differing number of pixels).
 
