@@ -282,7 +282,7 @@ A 2D histogram of the input warp distribution per cell. The gray outlines indica
 ```{figure} /_static/cell-inputs-track-9813.png
 :scale: 100 %
 
-Input warp distribution of 33 warps within tract 9813. Red squares represent the inner boundaries of patches, which overlap each other by the size of a cell. These duplicate cells are removed prior to averaging values within `healsparse` pixels.
+Input warp distribution of 33 warps within tract 9813. Red squares represent the inner boundaries of patches, which overlap each other by two inner cell widths. These duplicate cells are removed prior to averaging values within `healsparse` pixels.
 ```
 
 ### Cell Variance
