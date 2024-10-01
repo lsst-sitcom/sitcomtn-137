@@ -331,13 +331,13 @@ Depth of a cell is calculated using PSF maglim (5-sigma). Depth increases as a f
 ```{figure} /_static/cell-input-fraction-track-9813.png
 :scale: 100 %
 
-The distribution of remaining input warp fraction of cells across tract 9813, at a maximum mask fraction threshold for warps at 5%; warps with a mask fraction above the threshold are discarded.
+The distribution of remaining input warp fraction of cells across tract 9813, at a maximum mask fraction threshold for warps at 5%; warps with a mask fraction above the threshold are discarded. Linear pattern of discarded warps likely due to column orientation, leading to patterns in bright star bleed trails, bad columns, etc.
 ```
 
 ```{figure} /_static/cell-mask-fraction-track-9813.png
 :scale: 100 %
 
-The distribution of coadded mask fraction of cells across tract 9813. The maximum mask fraction threshold for warps is set to 5%; warps with a mask fraction above the threshold are discarded and not included in the coadded mask fraction.
+The distribution of coadded mask fraction of cells across tract 9813. The maximum mask fraction threshold for warps is set to 5%; warps with a mask fraction above the threshold are discarded and not included in the coadded mask fraction. Linear pattern of discarded warps likely due to column orientation, leading to patterns in bright star bleed trails, bad columns, etc.
 ```
 
 #### Maximum Mask Fraction Threshold Function
