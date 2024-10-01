@@ -147,7 +147,21 @@ The first is straight-forward, and is simply requires calling `list(coadd.cells.
 
 The second method is for displaying information in a grid format, such as a 2D histogram of cell values. The list in the first method will need to be expanded to include the empty cells that were initially skipped over. To achieve this, two lists are used: `cell_list` and `cells_filled`. The `cell_list` object is meant to store all possible iterations of `Index2D` objects, while `cells_filled` keeps tracks of which indices within `cell_list` are actually filled. 
 
-[Code block: Loop for generating 2D grid of cell indices]
+```{code-block} python
+cell_list_filled = list(coadd.cells.keys())
+cell_list = []
+cells_filled = [False] * coadd.grid.shape[0] * coadd.grid.shape[1]
+
+index = 0
+for i in range(coadd.grid.shape[1]):
+    for j in range(coadd.grid.shape[0]):
+        cell_list.append(Index2D(x=j,y=i))
+
+        if Index2D(x=j,y=i) in cell_list_filled:
+            cells_filled[index]=True
+
+        index += 1
+```
 
 When iterating over the full `cell_list`, each cell can be checked if it's filled by checking if `cells_filled` is true, and skipped if false.
 
