@@ -1,23 +1,22 @@
 # Getting Started with Cell-Based Coadds
 
 ```{abstract}
-As development for cell-based coadds continue, their testing will become pertinent during the commissioning process. This technote is meant to be an initial guide to generating and using cell-based coadds within the context of the LSST Science Pipelines and USDF, where several example use cases will be outlined in the form of brief code snippets and  initial analyses. Example code will also be maintained in the form of Jupyter notebooks, currently found [here](https://github.com/mirarenee/notebooks/tree/main/cell_coadds/technote).
+As development for cell-based coadds continue, their testing will become pertinent during the commissioning process. This technote is meant to be an initial guide to generating and using cell-based coadds within the context of the LSST Science Pipelines and USDF, where several example use cases will be outlined in the form of brief code snippets and initial analyses. Example code will also be maintained in the form of Jupyter notebooks, currently found [here](https://github.com/mirarenee/notebooks/tree/main/cell_coadds/technote).
 ```
 
 ## How to generate cell-based coadds
 
-Generating cell-based coadds requires some basic familiarity with the LSST Science Pipelines and working with Butler repositories. This technote will focus on the particular details that are relevant to this specific use-case. Further documentation for using the pipelines can be found [here](https://pipelines.lsst.io/).
+Generating cell-based coadds requires some familiarity with the LSST Science Pipelines and butler repositories. This section will focus on the details that are relevant to this specific use-case. Further documentation for using the pipelines can be found [here](https://pipelines.lsst.io/).
 
 ### Setup at USDF
 
-You will need to setup a pipelines stack, which is updated regularly. To pick out the latest weekly update, run `source /sdf/group/rubin/sw/w_latest/loadLSST.bash`. This is a common choice for the sake of stability, though a better practice will be to pick out a daily release, for example `source /sdf/group/rubin/sw/tag/d_2024_08_27/loadLSST.bash`. Once you have sourced your favorite `bash` file, run `setup lsst_distrib` to start using your environment.
+You will need to setup a pipelines stack, which is updated regularly. To pick out the latest weekly update, run `source /sdf/group/rubin/sw/w_latest/loadLSST.bash`. This is a common choice for the sake of stability, though specific daily releases are also available, for example `source /sdf/group/rubin/sw/tag/d_2024_08_27/loadLSST.bash`. Once you have sourced your favorite `bash` file, run `setup lsst_distrib` to start using your environment.
 
-Occasionally, it might be useful to have a different version of a package within the current stack. A good troubleshooting tip will be to run `eups list -s | grep ${USER}`, which will list all locally setup packages.
+Occasionally, it might be useful to have a different version of a package within the current stack, especially in the case of ticket branches. A good troubleshooting tip will be to run `eups list -s | grep ${USER}`, which will list all locally setup packages.
 
 ### Running the `pipetask` command
 
-The `pipetask run` command is what will generate the coadds. This command will be run in the context of a specific butler repository, in this case found in `/sdf/data/rubin/repo/main`. Generating cell-based coadds as done in this technote follow the format of the below example:
-
+The `pipetask run` command is what will generate the coadds. This command will be run in the context of a specific butler repository. The `/sdf/data/rubin/repo/main` repo is a good example. Generating cell-based coadds as done in this technote follow the format of the snippet below: 
 ```{code-block}
 pipetask run -j 4 --register-dataset-types \
 -b /sdf/data/rubin/repo/main \
@@ -30,14 +29,13 @@ The `pipetask run` command requires the following components:
 - `-b`
 	- This defines which butler to use. Here, it's easiest to use the one already defined within the main repository.
 - `-i`
-	- This is the input collection. This describes the data required while running the pipeline. In this case, to avoid rerunning the majority of the pipeline prior to the warping/coadd process, the command used above will pick out the required inputs (defined by the tasks called within the `pipeline.yaml` file). 
-	- As another note, it is best practice to generate and use the coadds on the same daily stack as the original run. For instance, it's best to use the `d_2024_08_27` daily stack environment when using the HSC run from `d_2024_08_27`. While it's possible to run the coadds on a mismatching stack, this is the best way to avoid possible inconsistencies.
+	- This defines the input collection. Note that it's good practice to generate and use the coadds on the same daily stack as the original run. For instance, it's best to use the `d_2024_08_27` daily stack environment when using the HSC run from `d_2024_08_27`. While it's possible to run the coadds on a mismatching stack, this is good way to avoid possible inconsistencies.
 - `-o`
-	- This is the output collection. The output collection is stored in `/sdf/data/rubin/repo/main/u/$USER/cell_coadds`. The `$USER` term is useful to as to not accidentally save the output collection in a different user folder, which is easy to do when copying and pasting from an example. 
+	- This is the output collection. The output collection is stored in `/sdf/data/rubin/repo/main/u/$USER/cell_coadds`. The `$USER` term is useful to as to not accidentally save the output collection in a different user folder.
 - `-p`
-	- This is where the pipeline file is stored. This will define which tasks to run, and with what specific configurations. A barebones pipeline file is shown below.
+	- This is where the pipeline file is stored. This will define which tasks to run, and with what specific configurations. A bare-bones pipeline file is shown below.
 - `-d`
-	- The dataset query. This is for limiting the data with whatever is specified. Useful for either specific investigations or reducing the time for the command to run. 
+	- The dataset query. This is for limiting the data with whatever is specified. Useful for either specific investigations or reducing the time for the command to run.
 
 An example `pipeline.yaml` file:
 ```{code-block} yaml
@@ -53,29 +51,30 @@ tasks:
         class: lsst.drp.tasks.assemble_cell_coadd.AssembleCellCoaddTask
 ```
 
-While most of the defaults config settings are sufficient, there are a few overrides that are necessary for generating the mask fraction plane. The first config, `doWarpMaskedFraction`, is first necessary to generate the actual mask fraction object. However, the second config, `doPreWarpInterpolation`, will trigger the actual warping of the mask plane (BAD, SAT, and CR masks by default) that produces the mask fractions. Without this second config setting, the mask fraction plane will contain only 0 and `NaN` values.
+With this pipeline, there are two tasks defined: `makeDirectWarp` and `assembleCellCoadd`. The warping task is not necessarily constrained to cell-based coadds, but is not run by default in the HSC runs we're accessing, so it must be specified. The tasks also contain information on the required input data types, which are accessed from the input collection defined in the `pipeline run` command. This is extremely helpful to avoid rerunning all tasks prior to the coaddition state, though only in the case where all defaults prior to coaddition can be kept.
 
-Another useful component is  `-c`, the config override command. The general format is `-c <task name>:<config name>=<value>`. For an example, let's say the above `pipetask` command was run, but another run is necessary to test what happens if `calc_error_from_input_variance` is set to false. There's no need to rewrite the original `pipeline.yaml` file; rather, this can be achieved with the `pipetask` command by adding a line `-c assembleCellCoadd:calc_error_from_input_variance=False`. 
+While most of the default config settings are sufficient, there are a few overrides that are necessary in the warping task for generating the mask fraction plane. The first config, `doWarpMaskedFraction`, is needed to generate the actual mask fraction object. However, the second config, `doPreWarpInterpolation`, will trigger the actual warping of the mask plane (BAD, SAT, and CR masks by default) that produces the mask fractions. Without this second config setting, the mask fraction plane will contain only 0 and `NaN` values.
+
+One helpful command component is  `-c`, which is used to override configs. The general format is `-c <task name>:<config name>=<value>`. For an example, let's say the above `pipetask` command was run, but another run is necessary to test what happens if `calc_error_from_input_variance` is set to false. There's no need to rewrite the original `pipeline.yaml` file; rather, this can be achieved with the `pipetask` command by adding a line `-c assembleCellCoadd:calc_error_from_input_variance=False`. 
 
 ### `pipetask` Outputs
 
-Our `pipetask` command will generate several useful data structures within our collection.
+The example `pipetask` command will generate several useful data structures within the output collection.
 
 - `deepCoadd_directWarp`
 	- An object of this type will contain the warped calexp image (or just warp) of a specific visit. Contains components like the image, mask, and variance planes of the warp, as well as PSF information.
  - `deepCoadd_directWarp_noise{n}`
 	- A noise realization generated from the variance plane of the input calexp. The default config setting calculates the median of the variance plane and then samples from a Gaussian distribution with a variance equal to the median value. Multiple noise planes can be generated for each warp, hence the `{n}` notation.
 - `deepCoaddCell`
-	- The coadd object containing the cell information for a specified patch. 
-	- Individual cells can be treated as their own coadded objects, but can also be stitched together to form a patch-sized coadd. 
+	- The coadd object containing the cell information for a specified patch. Image, mask, and variance planes are specific to individual cells, though these planes can be accessed at the patch level by combining cells together to generate a "stitched" coadd.
 - `deepCoadd_directWarp_maskedFraction`
-	- This object stores the mask fraction associated with each pixel. Interpolated(?) masks cannot be represented with binary values since they are "smeared" across neighboring pixels due to the warping process.
+	- This object stores the mask fraction associated with each pixel. Interpolated masks cannot be represented with binary values since they are "smeared" across neighboring pixels due to the warping process.
 
 ### Sample Butler Commands
 
 This section collects a few useful commands and snippets that can help maintain and keep track of collections using the butler.
 
-Query user collections (should be run within your user directory, though unsure if that's intended(?)):
+Query user collections (should be run within your user directory):
 `butler query-collections /repo/main u/${USER}/*` 
 
 Remove collections from your user directory example (do this first before removing runs):
@@ -83,9 +82,9 @@ Remove collections from your user directory example (do this first before removi
 
 Remove orphaned runs (can also replace the wildcard with a specific run):  `butler remove-runs /repo/main u/${USER}/<collection name>/*` 
 
-These commands only remove the collections and runs from the butler's knowledge; the actual folder (and subfolders) that contained the collection will remain, though empty. Once the collection and runs have been removed using the butler commands, the folder itself will be OK to remove using typical Linux commands.
+Note that these commands don't remove the folders containing the removed data. Once the collection and runs have been removed using the butler commands, the folder itself will be OK to remove using typical terminal commands.
 
-The above commands are generally useful, but occasionally it will be necessary to remove a registered dataset type from the butler entirely (across all collections in the repository, so some caution is warranted!). This is typically due to structural changes during development. First, it will be useful to see which collections contain the dataset type to be removed. The easiest outcome will be when the only collections queried will be your own, but in the case it's not, notify the owner's of collections which contain the dataset to be removed. To search for these collections, you can use the Python snippet below:
+Occasionally it will be necessary to remove a registered dataset type from the butler entirely (across all collections in the repository, so some caution is warranted!). This is typically due to structural changes during development. First, it will be useful to see which collections contain the dataset type to be removed. The easiest outcome will be when the only collections queried will be your own, but in the case it's not, notify the owner(s) of collections which contain the dataset to be removed. To search for these collections, you can use the Python snippet below:
 
 ```{code-block} python
 collections = registry.queryCollections()
@@ -100,11 +99,11 @@ To then remove the dataset type, you use the following command:
 
 ## Common Coding Patterns & Algorithms
 
-There are a few different chunks of code that are especially helpful when working with cell-based coadds and their data structures.
+There are a few common snippets of code that are especially helpful when working with cell-based coadds and their data structures.
 
 ### Butler in a Notebook
 
-Analyses using coadds are commonly done in a Jupyter notebook environment, such as the Rubin Science Platform. Accessing the cell-based coadds generated from the pipeline commands is best done using a butler, which can be setup within the notebook by specifying a repository and a collection. Generally, this sequence will look similar to:
+Analyses using coadds are commonly done in a Jupyter notebook environment, such as the Rubin Science Platform. Accessing the cell-based coadds generated from the pipeline commands is best done using a butler, which can be setup within the notebook by specifying a repository and a collection. Generally, this sequence will look like this:
 
 ```{code-block} python
 REPO = '/sdf/data/rubin/repo/main/'
@@ -117,9 +116,9 @@ registry = butler.registry
 collection = '<path to collection>'
 ```
 
-The collection will be the output collection defined in the `pipetask` command; in this case, that output collection would be `u/$USER/cell_coadds/<run name>` (replacing `&USER` with the appropriate username). The run name will encode the time the collection was generated and will have the format `YYYYMMDDTHHMinMinSSZ`. 
+The collection will be the output collection defined in the `pipetask` command; in this case, that output collection would be `u/$USER/cell_coadds/<run name>` (replacing `&USER` with the appropriate username). The run name will encode the time the collection was generated and will have the format `YYYYMMDDTHHMMSSZ`. 
 
-Now objects from the butler can be called. For instance, this notebook will refer to `coadd` and `warp` objects as the following objects (though the exact parameters may change):
+Now objects from the butler can be called. For instance, this technote will refer to `coadd` and `warp` objects as the following objects (though the exact parameters may change):
 
 ```{code-block} python
 coadd = butler.get('deepCoaddCell', 
@@ -169,7 +168,7 @@ For larger scale iterations over multiple patches, a straight-forward nested loo
 
 ```{code-block}
 for each patch:
-	get the cell-based coadd for this patch
+	get the coadd for this patch
 	get the list of cells in this patch using the coadd
 
 	for each cell:
@@ -178,13 +177,11 @@ for each patch:
 
 ### WCS information and `healsparse`
 
-Coadds and cells carry their WCS information, and can be simply called with `wcs = coadd.wcs`, for example. Once the WCS object is defined, it can be used in conjunction with any other coadds and cells that used that WCS in typical WCS functions, such as `pixelToSky`. WCS is consistent across individual tracts.
+Coadds and cells carry their WCS information, and can be simply called with `wcs = coadd.wcs`, for example. Once the WCS object is defined, it can be used for any other coadds or cells that are within the same tract as the original object.
 
-The WCS information of cells is needed for implementing `healsparse` for cell-based coadds. Some care must also be taken to determine which pixels overlap cells using spherical geometry packages like `sphgeom`. For each cell, the corners will need to be converted to RA/DEC and generated as a rectangle projected onto the spherical sky. 
+The WCS information of cells is needed for implementing `healsparse` for cell-based coadds. Some care must also be taken to determine which pixels overlap cells using spherical geometry packages like `sphgeom`. For each cell, the corners will need to be converted to RA/DEC and generated as a rectangle projected onto the spherical sky. This is essentially a many-to-many problem (many pixels per cell, and many cells per pixel) that needs to be reduced to a one-to-one structure (one value per pixel).
 
-This is essentially a many-to-many problem (many pixels per cell, and many cells per pixel) that needs to be reduced to a one-to-one structure (one value per pixel).
-
-With the `envolope` method in `sphgeom`, we can acquire the range (or multiple ranges) of pixels that overlap the cell region. This range only provides the start and end of the pixel list, but this is enough to expand and get a full list of overlapping pixels.
+With the `envolope` method in `sphgeom`, we can acquire the range (or multiple ranges) of pixels that overlap the cell region. This range only provides the start and end of the pixel list, but this is enough to expand and get a full list of pixels overlapping the cell.
 
 ```{code-block} python
 def get_cell_pixels(cell, wcs):
@@ -220,21 +217,19 @@ def get_cell_pixels(cell, wcs):
 
 Of course, this function is only for a single cell region. In most cases, this will be called while iterating over a large group of cells. The pixel indices for each cell should be collected such that each cell can be matched to the correct list of pixels (for instance, in an inhomogeneous 2D list, since each cell may overlap a differing number of pixels).
 
-Once the list of pixels and the relevant quantities are collected for each cell, now it's time to determine which cells overlap each pixel. Each unique pixel requires a unique associated value, but will overlap with several cells, so an average (or another point value) of the quantity across the overlapping cells will be necessary. 
-
-Once this one-to-one structure is achieved, it's straight-forward to create `healsparse` maps as seen in various tutorials for the package.
+Once the list of pixels and the relevant quantities (e.g. depth) are collected for each cell, it's then time to determine the specific cells contained within each pixel. Each unique pixel requires a unique associated value, but will overlap with several cells, so an average (or another point value) of the quantity across the overlapping cells will be necessary. Once this one-to-one structure is achieved, it's straight-forward to create `healsparse` maps as seen in various tutorials for the package.
 
 Several figures later in this technote utilize `healsparse`. For reference, the `nside_coverage` and `nside_sparse` parameters are 256 and 8192, respectively.
 
 ### Mask Fraction Algorithm Structure
 
-Going back to one of the data products products generated during the pipeline run, this section will take a closer look at the `deepCoadd_directWarp_maskedFraction` object, or more generally, the mask fraction plane. These are called mask fractions since unlike a typical binary mask plane, where for a specific mask a pixel is either masked (1) or not (0), each pixel with a mask fraction has a value *between* 0 and 1. This is required due to the warping process, which will "smear" a binary value across neighboring pixels.
+Going back to one of the data products products generated during the pipeline run, this section will take a closer look at the `deepCoadd_directWarp_maskedFraction` object, or more generally, the mask fraction object. These are called mask fractions since unlike a typical binary mask plane, where for a specific mask a pixel is either masked (1) or not (0), each pixel with a mask fraction has a value *between* 0 and 1. This is required due to the warping process, which will "smear" a binary value across neighboring pixels.
 
 Since there's some nuance between different fractions, it will be best to define them and use them consistently. For this technote, there are two different levels of mask fractions. 
 - The first level is the pixel-level mask fraction, which is the concept introduced above, where the mask fraction refers to the value for a single pixel. 
 - The second level is the cell-level mask fraction. Note that this can refer to either a cell or a cell-sized cutout of an input warp. The cell-level fraction is given by the sum of the mask fraction values for all pixels, divided by the total number of pixels within the cell. This is equivalent to the binary case of counting the number of masked pixels divided by the number of total pixels.
 
-Each input warp has a mask fraction plane, which means these planes must be coadded together to produce a single plane for the cell-based coadds. First the mask fraction plane for each warp must be weighted. For example, the analyses in the next section use the inverse of the (clipped) mean variance. These weighted mask fraction planes are then added pixel-by-pixel to produce the coadded mask fraction plane. To normalize the mask fraction plane for coadd, the weight from each warp is summed to produce the total weight; the normalization term is then the inverse of this sum. 
+Each input warp has an associated mask fraction object, which means these objects must be coadded together to produce a single mask fraction object to use with the cell-based coadds. First the mask fraction image for each warp must be weighted. For example, the analyses in the next section use the inverse of the (clipped) mean variance. These weighted mask fraction planes are then added pixel-by-pixel to produce the coadded mask fraction plane. To normalize the mask fraction plane for coadd, the weight from each warp is summed to produce the total weight; the normalization term is then the inverse of this sum. 
 
 The method for iterating over cells is slightly different for mask fraction analyses. There's nothing necessarily "wrong" with simply looping through each cell in every patch, but some analyses with mask fractions require **also** iterating over each *visit* for a cell. This loop becomes slow, since loading in an entire warp several times when it could be avoided is quite wasteful in terms of computational resources. One way around this is to load in each coadd and input warp once, and then iterate through all possible cells (skipping those that do not contain the input warp). Some potential pseudocode might look like this:
 
@@ -269,7 +264,7 @@ This might be helpful with visual comparison of a warp and coadd,  investigating
 
 #### Computing image weight
 
-The weight of an input warp is used in various analysis. To remain consistent with the weights generated by the LSST Science Pipelines, the weight function `_compute_weight` is called from `AssembleCellCoaddTask`. The `statsCtrl` snippet is also from `AssembleCellCoaddTask`, but is not a static method and not as straightforward to call directly from the task, since it requires information from the task configuration. The bit masks used are pulled from the default setting. As a whole, this snippet method pulls in the masked image of a warp with some statistical settings, then returns the inverse of the (clipped) mean of the variance. This is typically done at the cell level rather than the entire warp, which means that each pixel in the variance plane carries a value for variance, and the mean is taken for each of these pixels (with some outliers tossed using our statistical settings). The inverse of this mean is then the final weight.
+The weight of an input warp is used in various analysis. To remain consistent with the weights generated by the LSST Science Pipelines, the weight function `_compute_weight` is called from `AssembleCellCoaddTask`. The `statsCtrl` snippet is also from `AssembleCellCoaddTask`, but is not a static method and not as straightforward to call directly from the task, since it requires information from the task configuration. The bit masks used are pulled from the default setting. In short, the `_compute_weight` method pulls in the masked image of a warp with some statistical settings, then returns the inverse of the (clipped) mean of the variance.
 
 ```{code-block} python
 statsCtrl = afwMath.StatisticsControl()
@@ -284,9 +279,9 @@ weight = accTask._compute_weight(masked_im, statsCtrl)
 
 #### Retrieving Mask Information
 
-Accessing the mask information of an input warp or coadd is another useful tool. In general, it's easier to refer to masks with their letter names, such as "BAD" or "CR". The mask plane will store the dictionary relating the letter name to the assigned bit value, and can be converted using `getMaskPlane("<mask letter name>")` function. Using this function to convert to the bit value is good practice, since the bit value is not guaranteed to be consistent. 
+Accessing the mask information of an input warp or coadd is another useful tool. In general, it's easier to refer to masks with their letter names, such as "BAD" or "CR". The mask plane will store the dictionary relating the letter name to the assigned bit value, and can be converted using `getMaskPlane("<mask letter name>")` function. Using this function to convert to the bit value is good practice, since the exact bit value is not guaranteed to be consistent. 
 
-When using the mask planes, it's generally useful to pick out a specific mask to investigate. With the mask plane of the warp or coadd and the mask of interest, the function `numpy.bitwise_and()` will fill in the elements of the mask plane with the bit of the specified mask, and set the other elements to 0. This is most helpful in combination with `numpy.where()`, which can create a boolean mask based on the occurrence of pixels containing the bit. 
+Picking out a specific mask to investigate is generally useful when using the mask planes. With the mask plane of the warp or coadd and the mask of interest, the function `numpy.bitwise_and()` will fill in the elements of the mask plane with the bit of the specified mask, and set the other elements to 0. This is most helpful in combination with `numpy.where()`, which can create a boolean mask based on the occurrence of pixels containing the bit. 
 
 The example below aims to mask pixels with both the INTRP and SAT masks in the variance plane of a cell for later analyses. 
 
@@ -309,13 +304,13 @@ var_add_masks = ma.masked_array(cell.outer.variance.array, mask=masks)
 
 ## Initial Analyses
 
-This section presents initial analyses done using the tools described above. Unless specified otherwise, the following coadds were generated using the `d_2024_08_27` daily, along with code to run the analyses for consistency. 
+This section presents initial analyses done using the tools described above. Unless specified otherwise, the following coadds were generated using the `d_2024_08_27` daily.
 
 ### Inputs Warps
 
 As we will see, the number of visits for each cell significantly impacts the quality of the cell. Do to this correlation, it becomes important to understand what the distribution of input warps looks like, what it's affected by (e.g. detector edges and camera rotations), and if there's a significant enough loss of information to affect science results, such as shear measurements.
 
-Within the coadds framework, a coadd object covers a patch with a square grid of 22 cells on a side (484 cells total). A "stitched" coadd combines these 484 cells into a single, patch-sized image. See figures 1-3 for a sense of the pattern of the input distribution in HSC data.
+Within the coadds framework, a coadd object covers a patch with a square grid of 22 cells on a side (484 cells total). A "stitched" coadd combines these 484 cells into a single, patch-sized image. See figures 1 and 2 for a sense of the pattern of the input distribution in HSC data.
 
 ```{figure} /_static/2d-input-distrib.png
 :scale: 75 %
@@ -331,12 +326,12 @@ Input warp distribution of 33 warps within tract 9813. Red squares represent the
 
 ### Cell Variance
 
-- Theoretical derivation of variance improvement as a function of input warps
+Cell variance is one metric that can help track the quality of the cell-based coadds and shares a clear relationship with the input distribution of cells.
 
 ```{figure} /_static/cell-variance-track-9813.png
 :scale: 100 %
 
-The distribution of variance across cells. Follows the distribution of input warps closely. Variance in this case is in arbritrary flux^2 units.
+The distribution of variance across cells for tract 9813. Follows the distribution of input warps closely. Variance in this case is in arbritrary flux^2 units.
 ```
 
 ```{figure} /_static/variance-vs-inputs.png
@@ -354,7 +349,7 @@ Variance of a cell as a function of number of input warps. As expected, more inp
 ```{figure} /_static/cell-depth-track-9813.png
 :scale: 100 %
 
-The distribution of PSF maglim depth across cells. Follows the distribution of input warps closely.
+The distribution of PSF maglim depth (5-sigma) across cells. Follows the distribution of input warps closely.
 ```
 
 ```{figure} /_static/depth-vs-inputs.png
@@ -364,6 +359,8 @@ Depth of a cell is calculated using PSF maglim (5-sigma). Depth increases as a f
 ```
 
 ### Mask Fractions
+
+The following plots are some initial analyses involving the mask fraction in cell-based coadds, though there's still quite a bit to investigate. Figure 7 is meant to illustrate some concepts when looking at mask fractions. When tracking a bright star found in the lower right stitched coadd image, a higher mask fraction is found in the coadded mask fraction plot in the same spot, due to the interpolated bleed trails of the star. Similarly, a long track of bad columns in row 4 in the coadded mask fraction plot is also shown clearly, particularly in areas with fewer input warps.
 
 
 ```{figure} /_static/patch_61_m_frac.png
@@ -386,12 +383,16 @@ The distribution of coadded mask fraction of cells across tract 9813. The maximu
 
 #### Maximum Mask Fraction Threshold Function
 
+A useful metric when examining the mask fraction of coadds is the *input warp fraction*, which is meant to help understand how many warps are tossed when a maximum mask fraction threshold is implemented. A maximum mask fraction threshold defines the maximum mask fraction a warp can have before it is discarded from the coadd. The input warp fraction is then defined here as the remaining fraction of input warps out of the total possible after discarding warps that go over the mask fraction threshold. The total possible number of input warps includes all warps that fully cover the area of a cell, and have finite weights. A summary of this metric is seen in the maximum mask fraction threshold function. This function aims to represent the average input warp fraction of all cells in a sample for a range of maximum mask fraction thresholds. 
+
+A reasonable expectation is that as the threshold is lowered, fewer warps will remain. This appears to be the case, except for an interesting "divot" feature that is fairly consistent at a threshold of 0.016. Figure 11 narrows down the specific mask causing this divot to the BAD mask, leading to detector features as the likely cause. Figure 12 shows that this feature also appears at the patch scale, provided there are enough cells that have input warps.
+
 The data for this section was run on `w_2024_34` for tracts 9615 and 9697, and `d_2024_08_24` for tract 9813.
 
 ```{figure} /_static/tract-9813-m_frac-divot.png
 :scale: 100 %
 
-The fraction of remaining input warps as a function of the maximum mask fraction threshold. Each dot is the average fraction for 7657 cells within the tract. Warps is typically only discarded once the threshold is ~15% or lower, and only noticeable closer to 10%. As expected, the number of remaining input warps per cell decreases the the threshold is lowered; this will only include input warps with very few masked pixels. Note the divot feature around 0.02%.
+The fraction of remaining input warps as a function of the maximum mask fraction threshold. Each dot is the average fraction for 7657 cells within the tract. Warps are typically only discarded once the threshold is ~15% or lower, and only noticeable closer to 10%. As expected, the number of remaining input warps per cell decreases the the threshold is lowered; this will only include input warps with very few masked pixels. Note the divot feature around 2%.
 ```
 
 ```{figure} /_static/three-tract-mfrac_divot_w34.png
