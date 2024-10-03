@@ -342,9 +342,19 @@ Variance of a cell as a function of number of input warps. As expected, more inp
 
 ### Cell Depth
 
-- Cell-Based Coadds Depth Calculation
-	- Explanation of PSF area, total weight, other parameters
-	- Theoretical derivation of depth improvement as a function of input warps
+Depth is another common metric to track quality of cell-based coadds. The depth definition used in this technote is the 5 sigma PSF maglim, based on the calculation done in the `healsparse` property maps for the `pipe_tasks` repo ([line found here](https://github.com/lsst/pipe_tasks/blob/main/python/lsst/pipe/tasks/healSparseMappingProperties.py#L485)). The current zeropoint is hard-coded at 27 within the pipelines, sigma is generally set to 5. The can be written is a loose equation form:
+
+$$
+\text{magLim}=\text{zeropoint}-2.5\log_{10}\left(\text{sigma}\times\sqrt{\frac{\text{psfArea}}{\text{totalWeights}}}\right)
+$$
+
+The effective PSF area is defined with:
+
+$$
+A_{\text{PSF}}=\frac{\left(\sum_i p_i\right)^2}{\sum_i p_i^2}
+$$
+
+This PSF area calculation is taken from `computeExposureSummaryStats.py` in `pipe_tasks` ([line found here](https://github.com/lsst/pipe_tasks/blob/c56afc4ec12ceceb9170d279ff96429f1277c52b/python/lsst/pipe/tasks/computeExposureSummaryStats.py#L138)). Each cell contains a singe realized PSF image, while each {math}`p_i` value corresponds to a pixel within the PSF image. As for the total weight, this begins with the single weight of a cell calculated with `_compute_weight` (described earlier), which produces a single value. This value is then assigned to all pixels within the cell, and summed for the total weight.
 
 ```{figure} /_static/cell-depth-track-9813.png
 :scale: 100 %
