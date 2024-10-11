@@ -21,3 +21,11 @@ orcid = "https://orcid.org/0000-0002-3135-3824"
 name = "Department of Physics"
 internal_id = "WisconsinMadison"
 address = "University of Wisconsin-Madison, Madison, WI 53706, USA"
+[[technote.authors]]
+name = {given = "Arun", family = "Kannawadi"}
+internal_id = "kannawadia"
+orcid = "https://orcid.org/0000-0001-8783-6529"
+[[technote.authors.affiliations]]
+name = "Department of Astrophysical Sciences"
+internal_id = "Princeton-Astro"
+address = "Princeton University, Princeton, NJ 08544, USA"
